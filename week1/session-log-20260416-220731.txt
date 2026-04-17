@@ -1,0 +1,10 @@
+[22:08:02] KAREEM: what is Kubernetes?
+
+[22:08:05] KAI: Kubernetes is an open-source system for automating the deployment, scaling, and management of containerized applications. Think of it as an operating system for your distributed applications, making it easier to run and manage them across a cluster of machines.
+
+It handles crucial tasks like scheduling where your containers run, autoscaling them up or down based on demand, ensuring they self-heal if something goes wrong, and helping them find each other on the network (service discovery).
+
+Does that initial overview make sense?
+
+[22:09:21] KAREEM: what's in week 3?
+

@@ -1,177 +1,158 @@
+from google import genai
+from google.genai import types
 import os
 import json
 from datetime import datetime
-from google import genai
-from google.genai import types
 
 client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
 
-# ── TOOLS ──────────────────────────────────────────────────────────────────
+# ── Tools ──────────────────────────────────────────────────────────────────
 
-def get_tool_info(tool_name: str) -> dict:
-    """Returns platform engineering tool details."""
-    db = {
-        "docker":      {"category": "containerization", "difficulty": "intermediate", "week": 4},
-        "kubernetes":  {"category": "orchestration",    "difficulty": "advanced",     "week": 3},
-        "terraform":   {"category": "iac",              "difficulty": "intermediate", "week": 4},
-        "prometheus":  {"category": "monitoring",       "difficulty": "intermediate", "week": 5},
-        "langchain":   {"category": "ai framework",     "difficulty": "intermediate", "week": 2},
-        "langgraph":   {"category": "agent framework",  "difficulty": "advanced",     "week": 2},
+def get_tool_info(tool_name: str) -> str:
+    tools = {
+        "docker": "Docker containers package apps + dependencies. Platform engineers use it for consistent environments across dev/staging/prod.",
+        "kubernetes": "Kubernetes (K8s) orchestrates containers at scale. Handles scheduling, autoscaling, self-healing, and service discovery.",
+        "terraform": "Terraform is IaC — define cloud infrastructure in code. Reproducible, version-controlled infra.",
+        "langchain": "LangChain is a framework for building LLM-powered apps — chains, agents, RAG pipelines.",
+        "langfuse": "Langfuse is open-source LLM observability — traces every API call, cost, latency, and output quality.",
     }
-    return db.get(tool_name.lower(), {"error": f"{tool_name} not in database"})
+    key = tool_name.lower()
+    return tools.get(key, f"No info found for '{tool_name}'. Try: docker, kubernetes, terraform, langchain, langfuse.")
 
-def get_week_topics(week_number: int) -> dict:
-    """Returns curriculum topics for a given week."""
-    curriculum = {
-        1: ["GenAI foundations", "Gemini API", "system prompts", "memory", "function calling"],
-        2: ["LangChain", "LangGraph", "agents", "tool use"],
-        3: ["RAG pipelines", "vector databases", "embeddings"],
-        4: ["Docker", "CI/CD", "GitHub Actions"],
-        5: ["Observability", "Langfuse", "guardrails", "safety"],
+def get_week_topics(week_number: int) -> str:
+    weeks = {
+        1: "GenAI Foundations: LLMs, tokens, transformers, temperature, prompt engineering, first Gemini API calls.",
+        2: "Building with LLM APIs: streaming, system prompts, memory, function calling, JSON output, FastAPI + Docker.",
+        3: "LangChain & Agentic Patterns: LangGraph, tool use, multi-step agents, human-in-the-loop.",
+        4: "RAG Pipelines: document chunking, embeddings, vector stores, hybrid search, RAGAS evaluation.",
+        5: "Multi-Agent Systems: CrewAI, AutoGen, A2A protocol, MCP, enterprise integration.",
     }
-    topics = curriculum.get(week_number)
-    if not topics:
-        return {"error": f"Week {week_number} not found"}
-    return {"week": week_number, "topics": topics}
+    return weeks.get(week_number, f"Week {week_number} not found. Curriculum covers weeks 1–5 in the short-term track.")
 
-def get_learning_progress(username: str) -> dict:
-    """Returns a user's learning progress."""
-    progress = {
-        "kareem": {
-            "current_week": 1,
-            "current_day": 5,
-            "completed": ["GenAI foundations", "Gemini API", "system prompts", "memory", "function calling"],
-            "next_topic": "Building a full agent",
-            "streak_days": 5,
+def get_interview_tip(topic: str) -> str:
+    tips = {
+        "rag": "For RAG interviews: always mention chunking strategy, embedding model choice, and how you'd evaluate with RAGAS — faithfulness + answer relevancy.",
+        "agents": "For agent interviews: whiteboard the 4 patterns — Reflection, Tool Use, Planning, Multi-Agent. Mention LangGraph for stateful agents.",
+        "observability": "For observability: lead with Langfuse for LLM tracing, then Prometheus/Grafana for infra metrics. Mention OWASP Top 10 for LLMs.",
+        "ci/cd": "For CI/CD: describe the full story — GitHub Actions → lint + DeepEval tests → Docker build → ArgoCD GitOps deploy. That story wins interviews.",
+    }
+    key = topic.lower()
+    return tips.get(key, f"No tip for '{topic}'. Try: rag, agents, observability, ci/cd.")
+
+# ── Tool dispatcher ─────────────────────────────────────────────────────────
+
+TOOLS = [
+    {
+        "name": "get_tool_info",
+        "description": "Returns a plain-English explanation of a platform engineering tool.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "tool_name": {"type": "string", "description": "Name of the tool, e.g. docker, kubernetes, langchain"}
+            },
+            "required": ["tool_name"]
+        }
+    },
+    {
+        "name": "get_week_topics",
+        "description": "Returns the topics covered in a given week of the platform engineering curriculum.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "week_number": {"type": "integer", "description": "Week number (1-5)"}
+            },
+            "required": ["week_number"]
+        }
+    },
+    {
+        "name": "get_interview_tip",
+        "description": "Returns interview advice for a given platform engineering topic.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "topic": {"type": "string", "description": "Topic name, e.g. rag, agents, observability, ci/cd"}
+            },
+            "required": ["topic"]
         }
     }
-    return progress.get(username.lower(), {"error": f"User {username} not found"})
-
-# ── TOOL DEFINITIONS ────────────────────────────────────────────────────────
-
-tools = [
-    types.Tool(function_declarations=[
-        types.FunctionDeclaration(
-            name="get_tool_info",
-            description="Get details about a platform engineering tool like Docker, Kubernetes, Terraform, LangChain",
-            parameters=types.Schema(
-                type="OBJECT",
-                properties={"tool_name": types.Schema(type="STRING")},
-                required=["tool_name"]
-            )
-        ),
-        types.FunctionDeclaration(
-            name="get_week_topics",
-            description="Get the topics covered in a specific week of the platform engineering curriculum",
-            parameters=types.Schema(
-                type="OBJECT",
-                properties={"week_number": types.Schema(type="INTEGER")},
-                required=["week_number"]
-            )
-        ),
-        types.FunctionDeclaration(
-            name="get_learning_progress",
-            description="Get a student's current learning progress and completed topics",
-            parameters=types.Schema(
-                type="OBJECT",
-                properties={"username": types.Schema(type="STRING")},
-                required=["username"]
-            )
-        ),
-    ])
 ]
 
-available_functions = {
-    "get_tool_info": get_tool_info,
-    "get_week_topics": get_week_topics,
-    "get_learning_progress": get_learning_progress,
-}
+def dispatch(name, args):
+    if name == "get_tool_info":
+        return get_tool_info(**args)
+    elif name == "get_week_topics":
+        return get_week_topics(**args)
+    elif name == "get_interview_tip":
+        return get_interview_tip(**args)
+    return "Unknown tool."
 
-# ── AGENT LOOP ──────────────────────────────────────────────────────────────
+# ── Session log ─────────────────────────────────────────────────────────────
 
-conversation_history = []
+log_path = f"session-log-{datetime.now().strftime('%Y%m%d-%H%M%S')}.txt"
 
-SYSTEM_PROMPT = """You are a platform engineering learning assistant for Kareem.
-You help him understand tools, track his progress, and guide his learning journey.
-Use tools when asked about specific tools, weeks, or progress.
-Be concise, practical, and encouraging."""
+def log(role, text):
+    with open(log_path, "a") as f:
+        f.write(f"[{datetime.now().strftime('%H:%M:%S')}] {role.upper()}: {text}\n\n")
 
-def run_agent(user_input: str):
-    # Add user message to history
-    conversation_history.append(
-        types.Content(role="user", parts=[types.Part(text=user_input)])
-    )
+# ── Agent loop ───────────────────────────────────────────────────────────────
 
-    # First model call
+SYSTEM = """You are Kai, a sharp and practical platform engineering mentor.
+You help Kareem Rufai learn AI platform engineering through clear explanations and hands-on challenges.
+You have access to tools for curriculum info, tool explanations, and interview tips.
+Keep answers focused. When you use a tool, integrate the result naturally into your answer.
+After answering, always end with one short follow-up question or challenge to keep Kareem engaged."""
+
+history = []
+
+print("╔══════════════════════════════════════╗")
+print("║  Kai — Platform Engineering Mentor   ║")
+print("║  Type 'quit' to exit                 ║")
+print("╚══════════════════════════════════════╝\n")
+
+while True:
+    user_input = input("Kareem: ").strip()
+    if not user_input:
+        continue
+    if user_input.lower() == "quit":
+        print(f"\nSession saved → {log_path}")
+        break
+
+    log("kareem", user_input)
+    history.append({"role": "user", "parts": [{"text": user_input}]})
+
+    # First call — model may request a tool
     response = client.models.generate_content(
         model="gemini-2.0-flash",
-        contents=conversation_history,
+        contents=history,
         config=types.GenerateContentConfig(
-            tools=tools,
-            system_instruction=SYSTEM_PROMPT,
-            temperature=0.3,
+            system_instruction=SYSTEM,
+            tools=[{"function_declarations": TOOLS}]
         )
     )
 
     part = response.candidates[0].content.parts[0]
 
-    # If model wants to call a function
-    if part.function_call:
-        fn_name = part.function_call.name
-        fn_args = dict(part.function_call.args)
-        print(f"  [calling {fn_name}{fn_args}]")
+    # If model called a tool
+    if hasattr(part, "function_call") and part.function_call:
+        fn = part.function_call
+        result = dispatch(fn.name, dict(fn.args))
 
-        # Execute the function
-        result = available_functions[fn_name](**fn_args)
+        # Feed tool result back
+        history.append({"role": "model", "parts": [{"function_call": {"name": fn.name, "args": dict(fn.args)}}]})
+        history.append({"role": "user", "parts": [{"function_response": {"name": fn.name, "response": {"result": result}}}]})
 
-        # Add tool exchange to history
-        conversation_history.append(
-            types.Content(role="model", parts=[part])
-        )
-        conversation_history.append(
-            types.Content(role="tool", parts=[types.Part(
-                function_response=types.FunctionResponse(
-                    name=fn_name, response=result
-                )
-            )])
-        )
-
-        # Second call — model forms final answer using tool result
-        final = client.models.generate_content(
+        # Second call — model composes final answer
+        response = client.models.generate_content(
             model="gemini-2.0-flash",
-            contents=conversation_history,
-            config=types.GenerateContentConfig(
-                tools=tools,
-                system_instruction=SYSTEM_PROMPT,
-                temperature=0.3,
-            )
+            contents=history,
+            config=types.GenerateContentConfig(system_instruction=SYSTEM)
         )
-        reply = final.text
-        conversation_history.append(
-            types.Content(role="model", parts=[types.Part(text=reply)])
-        )
+        reply = response.text
     else:
         reply = part.text
-        conversation_history.append(
-            types.Content(role="model", parts=[types.Part(text=reply)])
-        )
 
-    return reply
+    history.append({"role": "model", "parts": [{"text": reply}]})
+    log("kai", reply)
 
-# ── MAIN ────────────────────────────────────────────────────────────────────
-
-print("=" * 50)
-print("  Platform Engineering Agent")
-print(f"  {datetime.now().strftime('%A, %B %d')}")
-print("=" * 50)
-print("Type 'quit' to exit\n")
-
-while True:
-    user_input = input("You: ").strip()
-    if not user_input:
-        continue
-    if user_input.lower() == "quit":
-        print("Agent: Good work today, Kareem. Keep building.")
-        break
-    reply = run_agent(user_input)
-    print(f"\nAgent: {reply}\n")
+    print(f"\nKai: {reply}")
+    print(f"     [tokens: {response.usage_metadata.total_token_count}]\n")
