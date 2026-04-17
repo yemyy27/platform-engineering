@@ -185,4 +185,44 @@ git pull origin main
 git add .
 git commit -m "describe what you did today"
 git push origin main
+```## Git Branching Commands
+
+### Create and switch to a new branch
+```bash
+git checkout -b branch-name
 ```
+
+### Push branch to GitHub
+```bash
+git push origin branch-name
+```
+
+### Merge branch into main
+```bash
+git checkout main
+git merge branch-name
+git push origin main
+```
+
+## GitOps & ArgoCD Concepts
+
+### GitOps — The Philosophy
+- Git is the single source of truth for all infrastructure
+- No one runs kubectl apply manually in production
+- Every change goes through a pull request → merge → auto-deploy
+- Desired state (Git) must always match actual state (cluster)
+
+### ArgoCD — The Tool
+- Watches your Git repo continuously
+- Detects drift when cluster ≠ Git state
+- Auto-syncs changes to Kubernetes
+- Self-heals — reverts any manual changes back to Git state
+
+### The Relationship
+GitOps = the idea
+ArgoCD = the robot that enforces it
+
+### Interview Answer — "How do you prevent config drift?"
+"We use GitOps with ArgoCD. Git is the only way to change
+production. ArgoCD watches the repo and auto-syncs any drift
+within minutes. Manual kubectl changes get reverted automatically."
